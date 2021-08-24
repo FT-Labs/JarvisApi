@@ -12,7 +12,7 @@ from pynput.keyboard import Key, Controller
 import cv2
 import psutil
 import webbrowser
-
+from FaceRecognition import FaceRecognition
 
 
 
@@ -28,17 +28,21 @@ class Jarvis:
         self.r.dynamic_energy_threshold = False
         self.cameraThread = threading.Thread(target=self.openCamera)
         self.cameraFlag = False
-        self.t1 = threading.Thread(target=self.speakThread, args=("",))
+        self.thread_speak = threading.Thread(target=self.speakThread, args=("",))
+        self.face_recognition = FaceRecognition()
+        self.thread_face_recognition = threading.Thread(target=self.face_recognition.open_video)
     #tts
     def speak(self, audio):
-        self.t1 = threading.Thread(target=self.speakThread, args=(audio,))
-        self.t1.start()
+        self.thread_speak = threading.Thread(target=self.speakThread, args=(audio,))
+        self.thread_speak.start()
 
     def speakThread(self, audio):
         self.engine.say(audio)
         self.engine.runAndWait()
 
-
+    def resetThreads(self):
+        self.thread_face_recognition = threading.Thread(target=self.face_recognition.open_video)
+        self.thread_face_recognition.start()
 
     def runAndWait(self):
         self.engine.runAndWait()
@@ -55,9 +59,10 @@ class Jarvis:
 
     def takeCommand(self):
 
+
         while True:
 
-            if not self.t1.is_alive():
+            if not self.thread_speak.is_alive():
                 with sr.Microphone() as mic:
                     #print("Listening commands sir...")
                     self.r.pause_threshold = 1
@@ -69,7 +74,8 @@ class Jarvis:
 
                     self.processCommand(query)
 
-                except:
+                except Exception as e:
+                    print(e)
                     self.speak("I am sorry sir, can you repeat again?")
                     #return "none"
 
@@ -90,14 +96,11 @@ class Jarvis:
 
     def processCommand(self, command):
         lwr = str(command).lower()
-        print(lwr)
 
         if any(x in lwr for x in g.NUMS):
             for key in g.NUMS:
                 if key in lwr.split(" "):
                     if len(lwr)<=2:
-                        #t1 = threading.Thread(target=self.speak, args=("Changing to desktop {}".format(key),))
-                        #t1.start()
                         self.speak("Changing to desktop {}".format(key))
                         os.system("xdotool key Super_L+{}".format(key))
                         return
@@ -123,18 +126,18 @@ class Jarvis:
             self.cameraThread.start()
         elif lwr.find("open") != -1 and lwr.find("stuff") != -1:
             self.speak("Opening your usual programs, sir.")
-            os.system("st -e sudo pacman -Syu &")
+            os.system("st -e sudo pacman -Syu &; disown")
             time.sleep(0.1)
             os.system("xdotool key alt+j Super_L+w")
-            time.sleep(0.35)
+            time.sleep(2)
             os.system("xdotool key Super_L+9")
             time.sleep(0.35)
-            os.system("whatsapp-for-linux &")
-            time.sleep(0.5)
-            os.system("/home/opt/Discord/Discord &")
-            time.sleep(0.5)
-            os.system("telegram-desktop &")
-            time.sleep(0.5)
+            os.system("whatsapp-for-linux & ; disown")
+            time.sleep(3)
+            os.system("/home/opt/Discord/Discord & ; disown")
+            time.sleep(3)
+            os.system("telegram-desktop & ; disown")
+            time.sleep(3)
             os.system("xdotool key Super_L+1 alt+j")
         elif self.cameraFlag and lwr.find("close cam") != -1:
             try:
@@ -155,11 +158,22 @@ class Jarvis:
             os.system("pamixer -t; kill -44 $(pidof dwmblocks)")
         elif lwr.find("volume") != -1 or lwr.find("audio") != -1:
             vol = lwr.rsplit(" ", maxsplit=1)[-1]
-            print("HERE")
-            print(vol)
             os.system("pamixer --unmute --set-volume {}; kill -44 $(pidof dwmblocks)".format(vol))
-        else:
-            self.speak("Sorry sir. Unknown command.")
+        elif lwr.find("eye") != -1 and lwr.find("open") != -1:
+            self.thread_face_recognition.start()
+            self.speak("Opening camera, sir")
+
+        if self.thread_face_recognition.is_alive():
+            if lwr.find("can you see me") != -1:
+                self.speak("Yes")
+                self.face_recognition.is_label = True
+            elif self.face_recognition.is_label and lwr.find("am i") != -1:
+                self.speak("admin")
+                self.face_recognition.is_name = True
+            elif lwr.find("close") != -1 or lwr.find("lowe") != -1:
+                self.face_recognition.close_video()
+                self.resetThreads()
+
 
 
 
@@ -168,7 +182,6 @@ class Jarvis:
 
 if __name__ == "__main__":
     jarvis = Jarvis()
-    #jarvis.speak("Hi, my name is Jarvis")
-    #jarvis.speak("At your service sir")
-    t1 = threading.Thread(target=jarvis.takeCommand)
-    t1.start()
+    jarvis.takeCommand()
+#    t1 = threading.Thread(target=jarvis.takeCommand)
+#    t1.start()
