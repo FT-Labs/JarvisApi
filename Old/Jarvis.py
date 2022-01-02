@@ -13,19 +13,6 @@ import cv2
 import psutil
 import webbrowser
 from FaceRecognition import FaceRecognition
-import pyaudio
-import websockets
-import asyncio
-import base64
-import json
-
-
-FRAMES_PER_BUFFER = 3200
-FORMAT = pyaudio.paInt16
-CHANNELS = 1
-RATE = 16000
-
-
 
 
 
@@ -41,86 +28,9 @@ class Jarvis:
         self.r.dynamic_energy_threshold = False
         self.cameraThread = threading.Thread(target=self.openCamera)
         self.cameraFlag = False
-        self.thread_speak = threading.Thread(target=self.speakThread, args=("",), daemon=True)
+        self.thread_speak = threading.Thread(target=self.speakThread, args=("",))
         self.face_recognition = FaceRecognition()
         self.thread_face_recognition = threading.Thread(target=self.face_recognition.open_video)
-        self.thread_speech_recognition = threading.Thread(target=self.start_asyncio, daemon=True)
-
-        self.res = "-1"
-
-
-
-    def start_asyncio(self):
-        asyncio.run(self.send_receive_data())
-
-
-    def change_number_string(self, command):
-        command = command.replace("one", "3")
-        command = command.replace("two", "2")
-        command = command.replace("three", "3")
-        command = command.replace("four", "4")
-        command = command.replace("five", "5")
-        command = command.replace("six", "6")
-        command = command.replace("seven", "7")
-        command = command.replace("eight", "8")
-        command = command.replace("nine", "9")
-        return command
-
-
-    async def send_receive_data(self):
-        async with websockets.connect(
-            g.SOCKET_ENDPOINT,
-            extra_headers=(("Authorization", g.API_KEY),),
-            ping_interval=5,
-            ping_timeout=20
-                ) as _ws:
-            await asyncio.sleep(0.1)
-            print("Receiving session begins...")
-            session_begins = await _ws.recv()
-            print(session_begins)
-            async def send():
-                while True:
-                    try:
-                        data = stream.read(FRAMES_PER_BUFFER)
-                        data = base64.b64encode(data).decode("utf-8")
-                        json_data = json.dumps({"audio_data" : str(data)})
-                        await _ws.send(json_data)
-                    except websockets.exceptions.ConnectionClosedError as e:
-                        print(e)
-                        assert e.code == 4008
-                        break
-                    except Exception as e:
-                        assert False, "Not a websocket 4008 error"
-                    await asyncio.sleep(0.01)
-
-                return True
-
-            async def receive():
-                flag = False
-                old = ""
-                counter = 0
-                while True:
-                    try:
-                        result_str = await _ws.recv()
-                        res = str(json.loads(result_str)["text"]).lower()
-                        res = res.strip(".")
-
-                        if res != "" and old in res:
-                            old = res
-                            print(old)
-                        else:
-                            self.res = old
-
-                    except websockets.exceptions.ConnectionClosedError as e:
-                        print(e)
-                        assert e.code == 4008
-                        break
-                    except Exception as e:
-                        assert False, "Not a 4008 websocket error"
-
-            send_result, receive_result = await asyncio.gather(send(), receive())
-
-
     #tts
     def speak(self, audio):
         self.thread_speak = threading.Thread(target=self.speakThread, args=(audio,))
@@ -148,16 +58,28 @@ class Jarvis:
             self.speak("Good evening sir")
 
     def takeCommand(self):
-        self.thread_speech_recognition.start()
-        res = self.res
+
 
         while True:
 
-            if res not in self.res:
-                self.processCommand(self.res)
-                res = self.res
-                time.sleep(1.5)
+            if not self.thread_speak.is_alive():
+                with sr.Microphone() as mic:
+                    #print("Listening commands sir...")
+                    self.r.pause_threshold = 1
+                    audio = self.r.listen(mic, timeout=100, phrase_time_limit=2)
 
+                try:
+                    query = self.r.recognize_google(audio, language="en-US")
+                    print(f"Admin says: {query}")
+
+                    self.processCommand(query)
+
+                except Exception as e:
+                    print(e)
+                    self.speak("I am sorry sir, can you repeat again?")
+                    #return "none"
+
+                #return query
 
 
     def openCamera(self):
@@ -174,7 +96,6 @@ class Jarvis:
 
     def processCommand(self, command):
         lwr = str(command).lower()
-        print(command)
 
         if any(x in lwr for x in g.NUMS):
             for key in g.NUMS:
@@ -242,7 +163,7 @@ class Jarvis:
             self.speak("Opening camera, sir")
 
         if self.thread_face_recognition.is_alive():
-            if lwr.find("see me") != -1:
+            if lwr.find("can you see me") != -1:
                 self.speak("Yes")
                 self.face_recognition.is_label = True
             elif self.face_recognition.is_label and lwr.find("am i") != -1:
@@ -255,18 +176,10 @@ class Jarvis:
 
 
 
+
+
+
 if __name__ == "__main__":
-    p = pyaudio.PyAudio()
-
-    stream = p.open(
-        format=FORMAT,
-        channels=CHANNELS,
-        rate=RATE,
-        input=True,
-        frames_per_buffer=FRAMES_PER_BUFFER
-            )
-
-
     jarvis = Jarvis()
     jarvis.takeCommand()
 #    t1 = threading.Thread(target=jarvis.takeCommand)

@@ -72,14 +72,14 @@ class FaceRecognition:
 
             cv2.imshow("Jarvis Cam", np.array(image))
 
-            #if self.close_cam:
-            #    vid.release()
-            #    cv2.destroyAllWindows()
-            #    self.close_cam = False
-            #    break
+            if self.close_cam:
+                vid.release()
+                cv2.destroyAllWindows()
+                self.close_cam = False
+                return
 
 
             if cv2.waitKey(1) & 0xFF == ord('q'):
                 vid.release()
                 cv2.destroyAllWindows()
-                break
+                return
