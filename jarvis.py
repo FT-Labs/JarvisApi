@@ -2,17 +2,14 @@
 
 import pyttsx3
 import speech_recognition as sr
-import datetime
 import threading
 import time
-import Global as g
+import globs as g
 import os
-import subprocess
-from pynput.keyboard import Key, Controller
-import cv2
+from pynput.keyboard import Controller
 import psutil
 import webbrowser
-from FaceRecognition import FaceRecognition
+from face_recognition import FaceRecognition
 import pyaudio
 import websockets
 import asyncio
@@ -26,9 +23,6 @@ CHANNELS = 1
 RATE = 16000
 
 
-
-
-
 class Jarvis:
 
     def __init__(self):
@@ -39,8 +33,8 @@ class Jarvis:
         self.controller = Controller()
         self.r = sr.Recognizer()
         self.r.dynamic_energy_threshold = False
-        self.cameraThread = threading.Thread(target=self.openCamera)
-        self.cameraFlag = False
+        self.camera_thread = threading.Thread(target=self.openCamera)
+        self.camera_flag = False
         self.thread_speak = threading.Thread(target=self.speakThread, args=("",), daemon=True)
         self.face_recognition = FaceRecognition()
         self.thread_face_recognition = threading.Thread(target=self.face_recognition.open_video)

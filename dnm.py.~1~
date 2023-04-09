@@ -1,0 +1,39 @@
+#!/usr/bin/env python3
+
+import os
+import openai
+import asyncio
+import pyttsx3
+
+VOICE_RATE = 145
+
+class Role():
+    USER      = 0
+    ASSISTANT = 1
+    SYSTEM    = 2
+    roles = ["user", "assistant", "system"]
+
+openai.api_key = os.getenv("OPENAI_API_KEY")
+engine = pyttsx3.init()
+engine.setProperty("rate", VOICE_RATE)
+
+async def create_chat_message(role, content, speak):
+    completion = openai.ChatCompletion.create(
+      model="gpt-3.5-turbo",
+      messages=[
+        {"role": Role.roles[role], "content": content}
+      ]
+    )
+
+    if speak:
+        engine.say(completion.choices[0].message.content)
+        engine.runAndWait()
+    else:
+        print(completion.choices[0].message.content)
+
+
+async def main():
+    while True:
+        s = input()
+        await create_chat_message(2, s, True)
+asyncio.run(main())

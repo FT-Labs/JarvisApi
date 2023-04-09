@@ -1,10 +1,86 @@
 #!/usr/bin/python
-
-from PIL import Image, ImageDraw, ImageFont
-import math
-import matplotlib.pyplot as plt
 import cv2
+import face_recognition
+from PIL import ImageDraw, ImageFont
+import math
+
+from PIL import Image
 import numpy as np
+import pickle
+import globs as g
+
+class FaceRecognition:
+
+    def __init__(self):
+        self.name, self.known_faces = pickle.load(
+            open("./pickled_faces/admin.pickle", "rb"))
+        self.is_label = False
+        self.is_name = False
+        self.close_cam = False
+
+    def close_video(self):
+        self.is_label = False
+        self.is_name = False
+        self.close_cam = True
+
+    def open_video(self):
+
+        vid = cv2.VideoCapture(-1)
+
+        while vid.isOpened():
+            ret, image = vid.read()
+
+            if self.is_label:
+                prev_top_left = (-1, 1)
+                prev_bottom_right = (1, 1)
+
+                locations = face_recognition.face_locations(
+                    image, number_of_times_to_upsample=0, model=g.MODEL)
+                encodings = face_recognition.face_encodings(image, locations)
+
+                image = Image.fromarray(image)
+                # Get width from cv2
+                face_label = FaceLabel(image, 0, vid.get(3))
+
+                for face_encoding, face_location in zip(encodings, locations):
+                    results = face_recognition.compare_faces(
+                        self.known_faces, face_encoding, g.TOL)
+                    match = ""
+                    if any(results):
+
+                        if self.is_name:
+                            match = self.name
+
+                        top_left = (face_location[3] - (face_location[1] - face_location[3])/4,
+                                    face_location[0] - (face_location[2] - face_location[0])/4)
+                        bottom_right = (face_location[1] + (face_location[1] - face_location[3])/4,
+                                        face_location[2] + (face_location[2] - face_location[0])/4)
+
+                        percentage_change = [top_left[0]/prev_top_left[0], top_left[1]/prev_top_left[1],
+                                             bottom_right[0]/prev_bottom_right[0], bottom_right[1]/prev_bottom_right[1]]
+
+                        if prev_top_left[0] != -1 and not (any(1.25 < x for x in percentage_change) or any(0.75 > x for x in percentage_change)):
+                            face_label.dashed_rectangle(
+                                [prev_top_left, prev_bottom_right], name=match)
+                        else:
+                            face_label.dashed_rectangle(
+                                [top_left, bottom_right], name=match)
+                            prev_top_left = top_left
+                            prev_bottom_right = bottom_right
+
+            cv2.imshow("Jarvis Cam", np.array(image))
+
+            if self.close_cam:
+                vid.release()
+                cv2.destroyAllWindows()
+                self.close_cam = False
+                return
+
+
+            if cv2.waitKey(1) & 0xFF == ord('q'):
+                vid.release()
+                cv2.destroyAllWindows()
+                return
 
 FONT_PATH = "./fonts/terminus-ttf-4.49.1/TerminusTTF-Bold-4.49.1.ttf"
 
@@ -136,36 +212,3 @@ class FaceLabel(ImageDraw.ImageDraw):
                          dash, outline, width)
         self.rectangle([(x1, (y1+y2)/2 - halfwidth1), (x1 + dash[0]*2/3, (y1+y2)/2 +halfwidth1)], fill="cyan")
         return
-
-
-
-#image = Image.new('RGB', (300, 200), (255, 255, 255))
-#d = DashedImageDraw(image)
-#
-#
-##image.save("image.png", "PNG")
-##plt.imshow(image)
-##plt.show()
-#
-#vc = cv2.VideoCapture(0)
-#
-#if vc.isOpened(): # try to get the first frame
-#    rval, frame = vc.read()
-#else:
-#    rval = False
-#
-#while rval:
-#    cv2.imshow("preview", frame)
-#    rval, frame = vc.read()
-#    frame = Image.fromarray(frame)
-#    key = cv2.waitKey(20)
-#    if key == 27: # exit on ESC
-#        break
-#    else:
-#        d = DashedImageDraw(frame)
-#        d.dashed_rectangle([(20, 20), (250, 250)],
-#                   dash = (50, 5), outline  = 'cyan', width = 2)
-#        frame = np.array(frame)
-#
-#vc.release()
-#cv2.destroyWindow("preview")
