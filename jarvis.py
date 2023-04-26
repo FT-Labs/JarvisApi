@@ -212,9 +212,9 @@ class Jarvis:
             os.system("telegram-desktop & ; disown")
             time.sleep(3)
             os.system("xdotool key Super_L+1 alt+j")
-        elif self.cameraFlag and lwr.find("close cam") != -1:
+        elif self.camera_flag and lwr.find("close cam") != -1:
             try:
-                self.cameraFlag = False
+                self.camera_flag = False
                 self.speak("Closing camera, sir")
                 self.closeCamera()
             except:

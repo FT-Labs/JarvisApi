@@ -28,6 +28,7 @@ async def create_chat_message(role, content, speak):
     if speak:
         engine.say(completion.choices[0].message.content)
         engine.runAndWait()
+        print(completion.choices[0].message.content)
     else:
         print(completion.choices[0].message.content)
 

@@ -14,8 +14,8 @@ class FaceRecognition:
     def __init__(self):
         self.name, self.known_faces = pickle.load(
             open("./pickled_faces/admin.pickle", "rb"))
-        self.is_label = False
-        self.is_name = False
+        self.is_label = True
+        self.is_name = True
         self.close_cam = False
 
     def close_video(self):
@@ -42,11 +42,11 @@ class FaceRecognition:
                 # Get width from cv2
                 face_label = FaceLabel(image, 0, vid.get(3))
 
-                for face_encoding, face_location in zip(encodings, locations):
-                    results = face_recognition.compare_faces(
-                        self.known_faces, face_encoding, g.TOL)
-                    match = ""
-                    if any(results):
+                for _, face_location in zip(encodings, locations):
+                    # results = face_recognition.compare_faces(
+                    #     self.known_faces, face_encoding, g.TOL)
+                    # match = ""
+                    if True:
 
                         if self.is_name:
                             match = self.name
@@ -59,14 +59,14 @@ class FaceRecognition:
                         percentage_change = [top_left[0]/prev_top_left[0], top_left[1]/prev_top_left[1],
                                              bottom_right[0]/prev_bottom_right[0], bottom_right[1]/prev_bottom_right[1]]
 
-                        if prev_top_left[0] != -1 and not (any(1.25 < x for x in percentage_change) or any(0.75 > x for x in percentage_change)):
-                            face_label.dashed_rectangle(
-                                [prev_top_left, prev_bottom_right], name=match)
-                        else:
-                            face_label.dashed_rectangle(
-                                [top_left, bottom_right], name=match)
-                            prev_top_left = top_left
-                            prev_bottom_right = bottom_right
+                        # if prev_top_left[0] != -1 and not (any(1.25 < x for x in percentage_change) or any(0.75 > x for x in percentage_change)):
+                        #     face_label.dashed_rectangle(
+                        #         [prev_top_left, prev_bottom_right], name=match)
+                        # else:
+                        face_label.dashed_rectangle(
+                            [top_left, bottom_right], name=match)
+                        prev_top_left = top_left
+                        prev_bottom_right = bottom_right
 
             cv2.imshow("Jarvis Cam", np.array(image))
 
